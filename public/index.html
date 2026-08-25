@@ -3,226 +3,332 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Skylark BI Agent</title>
+<title>Skylark BI — Flight Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.5/purify.min.js"></script>
 <style>
   :root {
-    --bg: #0b0d12;
-    --panel: #141821;
-    --panel-2: #1a1f2a;
-    --border: #262c38;
-    --text: #e8eaed;
-    --muted: #8b93a1;
-    --accent: #5b8bff;
-    --accent-dim: #24345f;
-    --agent-bubble: #171c26;
+    --bg: #0a120e;
+    --bg-2: #0d1712;
+    --panel: #121c17;
+    --panel-2: #16221c;
+    --border: #22322a;
+    --border-soft: #1a251f;
+    --text: #e7efe9;
+    --muted: #7e9488;
+    --muted-dim: #566459;
+    --amber: #ffb454;
+    --amber-dim: #4a3a20;
+    --teal: #5eead4;
+    --teal-dim: #163832;
+    --alert: #ff8a7a;
+    --mono: "IBM Plex Mono", monospace;
+    --sans: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
   }
   * { box-sizing: border-box; }
+  ::selection { background: var(--amber-dim); color: var(--amber); }
+
   body {
     margin: 0;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    background: var(--bg);
+    font-family: var(--sans);
+    background-color: var(--bg);
+    background-image:
+      radial-gradient(ellipse 900px 500px at 15% -10%, rgba(94,234,212,0.05), transparent),
+      radial-gradient(ellipse 700px 400px at 100% 10%, rgba(255,180,84,0.04), transparent);
     color: var(--text);
     height: 100vh;
     display: flex;
     flex-direction: column;
+    position: relative;
+    overflow: hidden;
   }
+
+  /* Subtle topographic contour watermark */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.05;
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="600" height="600" viewBox="0 0 600 600"><g fill="none" stroke="%235eead4" stroke-width="1"><path d="M-50 80 Q 150 20 300 80 T 650 80"/><path d="M-50 150 Q 150 90 300 150 T 650 150"/><path d="M-50 220 Q 150 160 300 220 T 650 220"/><path d="M-50 300 Q 150 380 300 300 T 650 300"/><path d="M-50 380 Q 150 440 300 380 T 650 380"/><path d="M-50 460 Q 150 400 300 460 T 650 460"/><path d="M-50 540 Q 150 480 300 540 T 650 540"/></g></svg>');
+    background-size: 700px 700px;
+    background-repeat: repeat;
+  }
+
   header {
-    padding: 16px 24px;
-    border-bottom: 1px solid var(--border);
+    position: relative;
+    z-index: 1;
+    padding: 16px 28px;
+    border-bottom: 1px dashed var(--border);
     display: flex;
     align-items: center;
     justify-content: space-between;
-    background: linear-gradient(180deg, rgba(91,139,255,0.06), transparent);
+    background: linear-gradient(180deg, rgba(94,234,212,0.03), transparent);
   }
-  .brand { display: flex; align-items: center; gap: 10px; }
-  .brand-icon {
-    width: 32px; height: 32px; border-radius: 9px;
-    background: linear-gradient(135deg, #5b8bff, #8a5bff);
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .brand-mark {
+    width: 34px; height: 34px; flex-shrink: 0;
     display: flex; align-items: center; justify-content: center;
-    font-size: 15px; font-weight: 700; color: white; flex-shrink: 0;
   }
-  header h1 { font-size: 15px; margin: 0; font-weight: 600; }
-  header p { margin: 1px 0 0; font-size: 12px; color: var(--muted); }
-  .header-right { display: flex; align-items: center; gap: 10px; }
+  .brand-mark svg { width: 100%; height: 100%; }
+  .brand-text h1 {
+    font-family: var(--mono);
+    font-size: 14px;
+    font-weight: 600;
+    margin: 0;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text);
+  }
+  .brand-text p {
+    margin: 3px 0 0;
+    font-size: 11.5px;
+    color: var(--muted);
+    letter-spacing: 0.01em;
+  }
+  .header-right { display: flex; align-items: center; gap: 12px; }
+
+  #new-chat-btn {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
+    padding: 6px 12px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    cursor: pointer;
+    border-radius: 3px;
+    transition: border-color 0.15s, color 0.15s;
+  }
+  #new-chat-btn:hover { border-color: var(--amber); color: var(--amber); }
+  #new-chat-btn:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+
   #status {
-    font-size: 11px;
-    padding: 4px 10px;
-    border-radius: 999px;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
+    padding: 5px 11px;
+    border-radius: 3px;
     background: var(--panel);
     border: 1px solid var(--border);
     color: var(--muted);
-    display: flex; align-items: center; gap: 6px;
+    display: flex; align-items: center; gap: 7px;
+    text-transform: uppercase;
   }
-  #status .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); }
-  #status.ok { color: #4ade80; border-color: #1f4a34; }
-  #status.ok .dot { background: #4ade80; box-shadow: 0 0 6px #4ade80; }
-  #status.err { color: #f87171; border-color: #4a1f1f; }
-  #status.err .dot { background: #f87171; }
-  #new-chat-btn {
-    font-size: 11.5px; padding: 5px 12px; border-radius: 999px;
-    background: transparent; border: 1px solid var(--border); color: var(--muted);
-    cursor: pointer;
-  }
-  #new-chat-btn:hover { color: var(--text); border-color: var(--accent); }
+  #status .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--muted-dim); flex-shrink: 0; }
+  #status.ok { color: var(--teal); border-color: var(--teal-dim); }
+  #status.ok .dot { background: var(--teal); box-shadow: 0 0 8px var(--teal); animation: pulse 2s infinite; }
+  #status.err { color: var(--alert); border-color: #4a2620; }
+  #status.err .dot { background: var(--alert); }
+  @media (prefers-reduced-motion: reduce) { #status.ok .dot { animation: none; } }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
 
-  #chat {
+  /* Chat area with flight-path timeline spine */
+  #chat-wrap {
+    position: relative;
+    z-index: 1;
     flex: 1;
     overflow-y: auto;
-    padding: 24px;
-    display: flex;
-    flex-direction: column;
-    gap: 18px;
-    max-width: 860px;
-    width: 100%;
-    margin: 0 auto;
     scrollbar-width: thin;
     scrollbar-color: var(--border) transparent;
   }
-  .msg { display: flex; gap: 10px; max-width: 92%; align-items: flex-start; }
-  .msg.user { align-self: flex-end; flex-direction: row-reverse; }
-  .avatar {
-    width: 26px; height: 26px; border-radius: 8px; flex-shrink: 0;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 12px; font-weight: 700; margin-top: 2px;
+  #chat {
+    padding: 28px 28px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+    max-width: 900px;
+    width: 100%;
+    margin: 0 auto;
   }
-  .msg.agent .avatar { background: linear-gradient(135deg, #5b8bff, #8a5bff); color: white; }
-  .msg.user .avatar { background: var(--panel-2); border: 1px solid var(--border); color: var(--muted); }
+
+  .msg { display: flex; gap: 12px; max-width: 94%; position: relative; }
+  .msg.user { align-self: flex-end; flex-direction: row-reverse; max-width: 82%; }
+
+  .waypoint-col {
+    display: flex; flex-direction: column; align-items: center;
+    width: 20px; flex-shrink: 0; padding-top: 4px;
+  }
+  .waypoint-dot {
+    width: 9px; height: 9px; border-radius: 50%;
+    background: var(--bg); border: 2px solid var(--teal);
+    flex-shrink: 0; z-index: 1;
+  }
+  .msg.agent.thinking .waypoint-dot { border-color: var(--amber); animation: pulse 1s infinite; }
+  .waypoint-line {
+    width: 1px; flex: 1; background: repeating-linear-gradient(to bottom, var(--border-soft) 0, var(--border-soft) 3px, transparent 3px, transparent 7px);
+    margin-top: 4px;
+  }
+
   .bubble {
-    padding: 13px 16px;
-    border-radius: 14px;
-    line-height: 1.55;
+    padding: 14px 17px;
+    border-radius: 3px;
+    line-height: 1.6;
     font-size: 14.5px;
     min-width: 0;
     overflow-x: auto;
   }
-  .msg.user .bubble { background: var(--accent); color: white; border-bottom-right-radius: 4px; }
-  .msg.agent .bubble { background: var(--agent-bubble); border: 1px solid var(--border); border-bottom-left-radius: 4px; }
+  .msg.user .bubble {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-right: 2px solid var(--amber);
+  }
+  .msg.agent .bubble {
+    background: var(--panel);
+    border: 1px solid var(--border-soft);
+    border-left: 2px solid var(--teal-dim);
+    flex: 1;
+  }
 
-  /* Markdown content styling inside agent bubbles */
   .bubble h1, .bubble h2, .bubble h3 {
-    margin: 14px 0 8px; font-weight: 600; line-height: 1.3; color: var(--text);
+    font-family: var(--mono); font-weight: 600; line-height: 1.3; color: var(--text);
+    margin: 16px 0 8px; letter-spacing: 0.02em;
   }
   .bubble h1:first-child, .bubble h2:first-child, .bubble h3:first-child { margin-top: 0; }
-  .bubble h1 { font-size: 17px; } 
-  .bubble h2 { font-size: 15.5px; }
-  .bubble h3 { font-size: 14.5px; color: #a9c0ff; }
+  .bubble h1 { font-size: 15.5px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .bubble h2 { font-size: 14.5px; }
+  .bubble h3 { font-size: 13.5px; color: var(--teal); text-transform: uppercase; letter-spacing: 0.05em; }
   .bubble p { margin: 8px 0; }
   .bubble p:first-child { margin-top: 0; }
   .bubble p:last-child { margin-bottom: 0; }
   .bubble ul, .bubble ol { margin: 8px 0; padding-left: 20px; }
-  .bubble li { margin: 3px 0; }
-  .bubble strong { color: #cdd8ff; font-weight: 600; }
+  .bubble li { margin: 4px 0; }
+  .bubble strong { color: var(--amber); font-weight: 600; }
   .bubble code {
-    background: rgba(255,255,255,0.08); padding: 1px 5px; border-radius: 4px;
-    font-size: 13px; font-family: "SF Mono", Consolas, monospace;
+    background: rgba(94,234,212,0.08); color: var(--teal); padding: 1px 5px; border-radius: 3px;
+    font-size: 12.5px; font-family: var(--mono);
   }
-  .bubble hr { border: none; border-top: 1px solid var(--border); margin: 14px 0; }
-  .bubble table {
-    border-collapse: collapse; width: 100%; margin: 10px 0; font-size: 13px;
-  }
-  .bubble th, .bubble td {
-    border: 1px solid var(--border); padding: 6px 10px; text-align: left;
-  }
-  .bubble th { background: rgba(91,139,255,0.1); font-weight: 600; color: #cdd8ff; }
-  .bubble tr:nth-child(even) td { background: rgba(255,255,255,0.02); }
+  .bubble hr { border: none; border-top: 1px dashed var(--border); margin: 16px 0; }
+  .bubble table { border-collapse: collapse; width: 100%; margin: 10px 0; font-size: 12.5px; font-family: var(--mono); }
+  .bubble th, .bubble td { border: 1px solid var(--border-soft); padding: 7px 10px; text-align: left; }
+  .bubble th { background: var(--teal-dim); color: var(--teal); font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; font-size: 11px; }
+  .bubble tr:nth-child(even) td { background: rgba(255,255,255,0.015); }
 
   .suggestions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    padding: 0 24px 16px;
-    max-width: 860px;
-    margin: 0 auto;
-    width: 100%;
+    position: relative; z-index: 1;
+    display: flex; flex-wrap: wrap; gap: 8px;
+    padding: 4px 28px 16px;
+    max-width: 900px; margin: 0 auto; width: 100%;
   }
   .chip {
-    font-size: 12.5px;
-    padding: 7px 12px;
-    border-radius: 999px;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    letter-spacing: 0.02em;
+    padding: 7px 12px 7px 10px;
+    border-radius: 3px;
     background: var(--panel);
     border: 1px solid var(--border);
     color: var(--muted);
     cursor: pointer;
     transition: border-color 0.15s, color 0.15s;
   }
-  .chip:hover { border-color: var(--accent); color: var(--text); }
+  .chip::before { content: "› "; color: var(--teal); }
+  .chip:hover { border-color: var(--amber); color: var(--text); }
+  .chip:focus-visible { outline: 2px solid var(--amber); outline-offset: 1px; }
 
   form#composer {
-    display: flex;
-    gap: 10px;
-    padding: 14px 24px 22px;
-    max-width: 860px;
-    margin: 0 auto;
-    width: 100%;
+    position: relative; z-index: 1;
+    display: flex; gap: 10px;
+    padding: 14px 28px 24px;
+    max-width: 900px; margin: 0 auto; width: 100%;
   }
   #input {
     flex: 1;
     background: var(--panel);
     border: 1px solid var(--border);
     color: var(--text);
-    padding: 12px 16px;
-    border-radius: 12px;
+    padding: 13px 16px;
+    border-radius: 3px;
     font-size: 14.5px;
+    font-family: var(--sans);
     outline: none;
     transition: border-color 0.15s;
   }
-  #input:focus { border-color: var(--accent); }
+  #input::placeholder { color: var(--muted-dim); }
+  #input:focus { border-color: var(--teal); }
   button#send {
-    background: var(--accent);
-    color: white;
+    background: var(--amber);
+    color: #1a1305;
     border: none;
-    padding: 0 20px;
-    border-radius: 12px;
-    font-size: 14px;
+    padding: 0 22px;
+    border-radius: 3px;
+    font-size: 13px;
+    font-family: var(--mono);
     font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
     cursor: pointer;
-    transition: opacity 0.15s;
+    transition: opacity 0.15s, box-shadow 0.15s;
   }
-  button#send:disabled { background: var(--accent-dim); cursor: default; }
-  button#send:not(:disabled):hover { opacity: 0.9; }
+  button#send:hover:not(:disabled) { box-shadow: 0 0 16px rgba(255,180,84,0.35); }
+  button#send:disabled { background: var(--amber-dim); color: var(--muted); cursor: default; }
+  button#send:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
 
   .typing { display: flex; gap: 4px; padding: 4px 0; }
   .typing span {
-    width: 6px; height: 6px; border-radius: 50%; background: var(--muted);
+    width: 5px; height: 5px; border-radius: 50%; background: var(--teal);
     animation: bounce 1.2s infinite ease-in-out;
   }
   .typing span:nth-child(2) { animation-delay: 0.15s; }
   .typing span:nth-child(3) { animation-delay: 0.3s; }
-  @keyframes bounce { 0%, 60%, 100% { opacity: 0.3; } 30% { opacity: 1; } }
+  @keyframes bounce { 0%, 60%, 100% { opacity: 0.25; } 30% { opacity: 1; } }
 
-  @media (max-width: 600px) {
+  @media (prefers-reduced-motion: reduce) {
+    .typing span { animation: none; opacity: 0.7; }
+  }
+
+  .msg { animation: rise 0.25s ease-out; }
+  @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+  @media (prefers-reduced-motion: reduce) { .msg { animation: none; } }
+
+  @media (max-width: 640px) {
     header { padding: 12px 16px; }
-    #chat { padding: 16px; gap: 14px; }
-    form#composer { padding: 10px 16px 16px; }
-    .suggestions { padding: 0 16px 12px; }
-    .msg { max-width: 96%; }
+    .brand-text p { display: none; }
+    #chat { padding: 20px 16px 8px; gap: 18px; }
+    form#composer { padding: 10px 16px 18px; }
+    .suggestions { padding: 4px 16px 12px; }
+    .msg { max-width: 98%; }
+    .msg.user { max-width: 90%; }
   }
 </style>
 </head>
 <body>
   <header>
     <div class="brand">
-      <div class="brand-icon">S</div>
-      <div>
-        <h1>Skylark BI Agent</h1>
-        <p>Founder-level Q&amp;A over live monday.com Deals + Work Orders data</p>
+      <div class="brand-mark">
+        <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="20" cy="20" r="3" fill="#ffb454"/>
+          <circle cx="8" cy="10" r="4" stroke="#5eead4" stroke-width="1.5"/>
+          <circle cx="32" cy="10" r="4" stroke="#5eead4" stroke-width="1.5"/>
+          <circle cx="8" cy="30" r="4" stroke="#5eead4" stroke-width="1.5"/>
+          <circle cx="32" cy="30" r="4" stroke="#5eead4" stroke-width="1.5"/>
+          <line x1="20" y1="20" x2="10.5" y2="12" stroke="#3a4a42" stroke-width="1.5"/>
+          <line x1="20" y1="20" x2="29.5" y2="12" stroke="#3a4a42" stroke-width="1.5"/>
+          <line x1="20" y1="20" x2="10.5" y2="28" stroke="#3a4a42" stroke-width="1.5"/>
+          <line x1="20" y1="20" x2="29.5" y2="28" stroke="#3a4a42" stroke-width="1.5"/>
+        </svg>
+      </div>
+      <div class="brand-text">
+        <h1>Skylark BI</h1>
+        <p>Live telemetry — Deals + Work Orders</p>
       </div>
     </div>
     <div class="header-right">
-      <button id="new-chat-btn" type="button">New chat</button>
-      <div id="status"><span class="dot"></span><span id="status-text">connecting…</span></div>
+      <button id="new-chat-btn" type="button">[ NEW SESSION ]</button>
+      <div id="status"><span class="dot"></span><span id="status-text">LINKING…</span></div>
     </div>
   </header>
 
-  <div id="chat"></div>
+  <div id="chat-wrap"><div id="chat"></div></div>
 
   <div class="suggestions" id="suggestions">
-    <div class="chip" data-q="How's our pipeline looking right now?">How's our pipeline looking?</div>
-    <div class="chip" data-q="Give me a leadership update">Give me a leadership update</div>
-    <div class="chip" data-q="Which sectors are performing best in the pipeline?">Best-performing sectors?</div>
-    <div class="chip" data-q="Are there any stalled or overdue work orders?">Stalled work orders?</div>
+    <div class="chip" data-q="How's our pipeline looking right now?">Pipeline status</div>
+    <div class="chip" data-q="Give me a leadership update">Leadership update</div>
+    <div class="chip" data-q="Which sectors are performing best in the pipeline?">Best sectors</div>
+    <div class="chip" data-q="Are there any stalled or overdue work orders?">Stalled work orders</div>
   </div>
 
   <form id="composer">
@@ -232,6 +338,7 @@
 
 <script>
   const chatEl = document.getElementById("chat");
+  const chatWrap = document.getElementById("chat-wrap");
   const form = document.getElementById("composer");
   const input = document.getElementById("input");
   const sendBtn = document.getElementById("send");
@@ -253,9 +360,17 @@
     const msg = document.createElement("div");
     msg.className = "msg " + role;
 
-    const avatar = document.createElement("div");
-    avatar.className = "avatar";
-    avatar.textContent = role === "user" ? "You" : "S";
+    if (role === "agent") {
+      const col = document.createElement("div");
+      col.className = "waypoint-col";
+      const dot = document.createElement("div");
+      dot.className = "waypoint-dot";
+      const line = document.createElement("div");
+      line.className = "waypoint-line";
+      col.appendChild(dot);
+      col.appendChild(line);
+      msg.appendChild(col);
+    }
 
     const bubble = document.createElement("div");
     bubble.className = "bubble";
@@ -265,20 +380,26 @@
       bubble.textContent = text;
     }
 
-    msg.appendChild(avatar);
     msg.appendChild(bubble);
     chatEl.appendChild(msg);
-    chatEl.scrollTop = chatEl.scrollHeight;
+    chatWrap.scrollTop = chatWrap.scrollHeight;
     return bubble;
   }
 
   function showTyping() {
     const msg = document.createElement("div");
-    msg.className = "msg agent";
+    msg.className = "msg agent thinking";
     msg.id = "typing-indicator";
-    msg.innerHTML = '<div class="avatar">S</div><div class="bubble"><div class="typing"><span></span><span></span><span></span></div></div>';
+    const col = document.createElement("div");
+    col.className = "waypoint-col";
+    col.innerHTML = '<div class="waypoint-dot"></div><div class="waypoint-line"></div>';
+    msg.appendChild(col);
+    const bubble = document.createElement("div");
+    bubble.className = "bubble";
+    bubble.innerHTML = '<div class="typing"><span></span><span></span><span></span></div>';
+    msg.appendChild(bubble);
     chatEl.appendChild(msg);
-    chatEl.scrollTop = chatEl.scrollHeight;
+    chatWrap.scrollTop = chatWrap.scrollHeight;
   }
   function hideTyping() {
     document.getElementById("typing-indicator")?.remove();
@@ -293,20 +414,22 @@
   async function init() {
     chatEl.innerHTML = "";
     suggestionsEl.style.display = "flex";
+    statusEl.className = "";
+    statusText.textContent = "LINKING…";
     try {
       await startSession();
 
       const health = await fetch("/api/health").then((r) => r.json());
       if (health.ok) {
         statusEl.className = "ok";
-        statusText.textContent = "connected to monday.com";
+        statusText.textContent = "LINK ACTIVE";
         addMessage("agent", "Hi — I'm connected to your **" + health.boards.deals.name + "** and **" + health.boards.workOrders.name + "** boards. Ask me about pipeline, sectors, revenue, or execution status.");
       } else {
         throw new Error(health.error);
       }
     } catch (err) {
       statusEl.className = "err";
-      statusText.textContent = "connection issue";
+      statusText.textContent = "LINK LOST";
       addMessage("agent", "I couldn't connect to monday.com: " + err.message + "\n\nCheck that `MONDAY_API_TOKEN` is set correctly and the boards exist.");
     }
   }
@@ -348,9 +471,7 @@
     if (chip) sendMessage(chip.dataset.q);
   });
 
-  newChatBtn.addEventListener("click", () => {
-    init();
-  });
+  newChatBtn.addEventListener("click", () => { init(); });
 
   init();
 </script>
