@@ -4,17 +4,19 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Skylark BI Agent</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.5/purify.min.js"></script>
 <style>
   :root {
-    --bg: #0f1115;
-    --panel: #161a21;
-    --border: #262b34;
+    --bg: #0b0d12;
+    --panel: #141821;
+    --panel-2: #1a1f2a;
+    --border: #262c38;
     --text: #e8eaed;
     --muted: #8b93a1;
-    --accent: #4f7fff;
-    --accent-dim: #2a3a66;
-    --user-bubble: #4f7fff;
-    --agent-bubble: #1e232c;
+    --accent: #5b8bff;
+    --accent-dim: #24345f;
+    --agent-bubble: #171c26;
   }
   * { box-sizing: border-box; }
   body {
@@ -32,17 +34,18 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
+    background: linear-gradient(180deg, rgba(91,139,255,0.06), transparent);
   }
-  header h1 {
-    font-size: 16px;
-    margin: 0;
-    font-weight: 600;
+  .brand { display: flex; align-items: center; gap: 10px; }
+  .brand-icon {
+    width: 32px; height: 32px; border-radius: 9px;
+    background: linear-gradient(135deg, #5b8bff, #8a5bff);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px; font-weight: 700; color: white; flex-shrink: 0;
   }
-  header p {
-    margin: 2px 0 0;
-    font-size: 12px;
-    color: var(--muted);
-  }
+  header h1 { font-size: 15px; margin: 0; font-weight: 600; }
+  header p { margin: 1px 0 0; font-size: 12px; color: var(--muted); }
+  .header-right { display: flex; align-items: center; gap: 10px; }
   #status {
     font-size: 11px;
     padding: 4px 10px;
@@ -50,9 +53,19 @@
     background: var(--panel);
     border: 1px solid var(--border);
     color: var(--muted);
+    display: flex; align-items: center; gap: 6px;
   }
+  #status .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); }
   #status.ok { color: #4ade80; border-color: #1f4a34; }
+  #status.ok .dot { background: #4ade80; box-shadow: 0 0 6px #4ade80; }
   #status.err { color: #f87171; border-color: #4a1f1f; }
+  #status.err .dot { background: #f87171; }
+  #new-chat-btn {
+    font-size: 11.5px; padding: 5px 12px; border-radius: 999px;
+    background: transparent; border: 1px solid var(--border); color: var(--muted);
+    cursor: pointer;
+  }
+  #new-chat-btn:hover { color: var(--text); border-color: var(--accent); }
 
   #chat {
     flex: 1;
@@ -60,30 +73,67 @@
     padding: 24px;
     display: flex;
     flex-direction: column;
-    gap: 16px;
-    max-width: 820px;
+    gap: 18px;
+    max-width: 860px;
     width: 100%;
     margin: 0 auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
   }
-  .msg { display: flex; gap: 10px; max-width: 90%; }
+  .msg { display: flex; gap: 10px; max-width: 92%; align-items: flex-start; }
   .msg.user { align-self: flex-end; flex-direction: row-reverse; }
-  .bubble {
-    padding: 12px 16px;
-    border-radius: 14px;
-    line-height: 1.5;
-    font-size: 14.5px;
-    white-space: pre-wrap;
+  .avatar {
+    width: 26px; height: 26px; border-radius: 8px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700; margin-top: 2px;
   }
-  .msg.user .bubble { background: var(--user-bubble); color: white; border-bottom-right-radius: 4px; }
+  .msg.agent .avatar { background: linear-gradient(135deg, #5b8bff, #8a5bff); color: white; }
+  .msg.user .avatar { background: var(--panel-2); border: 1px solid var(--border); color: var(--muted); }
+  .bubble {
+    padding: 13px 16px;
+    border-radius: 14px;
+    line-height: 1.55;
+    font-size: 14.5px;
+    min-width: 0;
+    overflow-x: auto;
+  }
+  .msg.user .bubble { background: var(--accent); color: white; border-bottom-right-radius: 4px; }
   .msg.agent .bubble { background: var(--agent-bubble); border: 1px solid var(--border); border-bottom-left-radius: 4px; }
-  .msg.agent .bubble strong { color: #a9c0ff; }
+
+  /* Markdown content styling inside agent bubbles */
+  .bubble h1, .bubble h2, .bubble h3 {
+    margin: 14px 0 8px; font-weight: 600; line-height: 1.3; color: var(--text);
+  }
+  .bubble h1:first-child, .bubble h2:first-child, .bubble h3:first-child { margin-top: 0; }
+  .bubble h1 { font-size: 17px; } 
+  .bubble h2 { font-size: 15.5px; }
+  .bubble h3 { font-size: 14.5px; color: #a9c0ff; }
+  .bubble p { margin: 8px 0; }
+  .bubble p:first-child { margin-top: 0; }
+  .bubble p:last-child { margin-bottom: 0; }
+  .bubble ul, .bubble ol { margin: 8px 0; padding-left: 20px; }
+  .bubble li { margin: 3px 0; }
+  .bubble strong { color: #cdd8ff; font-weight: 600; }
+  .bubble code {
+    background: rgba(255,255,255,0.08); padding: 1px 5px; border-radius: 4px;
+    font-size: 13px; font-family: "SF Mono", Consolas, monospace;
+  }
+  .bubble hr { border: none; border-top: 1px solid var(--border); margin: 14px 0; }
+  .bubble table {
+    border-collapse: collapse; width: 100%; margin: 10px 0; font-size: 13px;
+  }
+  .bubble th, .bubble td {
+    border: 1px solid var(--border); padding: 6px 10px; text-align: left;
+  }
+  .bubble th { background: rgba(91,139,255,0.1); font-weight: 600; color: #cdd8ff; }
+  .bubble tr:nth-child(even) td { background: rgba(255,255,255,0.02); }
 
   .suggestions {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
     padding: 0 24px 16px;
-    max-width: 820px;
+    max-width: 860px;
     margin: 0 auto;
     width: 100%;
   }
@@ -95,14 +145,15 @@
     border: 1px solid var(--border);
     color: var(--muted);
     cursor: pointer;
+    transition: border-color 0.15s, color 0.15s;
   }
   .chip:hover { border-color: var(--accent); color: var(--text); }
 
   form#composer {
     display: flex;
     gap: 10px;
-    padding: 16px 24px 24px;
-    max-width: 820px;
+    padding: 14px 24px 22px;
+    max-width: 860px;
     margin: 0 auto;
     width: 100%;
   }
@@ -115,6 +166,7 @@
     border-radius: 12px;
     font-size: 14.5px;
     outline: none;
+    transition: border-color 0.15s;
   }
   #input:focus { border-color: var(--accent); }
   button#send {
@@ -126,8 +178,10 @@
     font-size: 14px;
     font-weight: 600;
     cursor: pointer;
+    transition: opacity 0.15s;
   }
   button#send:disabled { background: var(--accent-dim); cursor: default; }
+  button#send:not(:disabled):hover { opacity: 0.9; }
 
   .typing { display: flex; gap: 4px; padding: 4px 0; }
   .typing span {
@@ -137,15 +191,29 @@
   .typing span:nth-child(2) { animation-delay: 0.15s; }
   .typing span:nth-child(3) { animation-delay: 0.3s; }
   @keyframes bounce { 0%, 60%, 100% { opacity: 0.3; } 30% { opacity: 1; } }
+
+  @media (max-width: 600px) {
+    header { padding: 12px 16px; }
+    #chat { padding: 16px; gap: 14px; }
+    form#composer { padding: 10px 16px 16px; }
+    .suggestions { padding: 0 16px 12px; }
+    .msg { max-width: 96%; }
+  }
 </style>
 </head>
 <body>
   <header>
-    <div>
-      <h1>Skylark BI Agent</h1>
-      <p>Founder-level Q&A over live monday.com Deals + Work Orders data</p>
+    <div class="brand">
+      <div class="brand-icon">S</div>
+      <div>
+        <h1>Skylark BI Agent</h1>
+        <p>Founder-level Q&amp;A over live monday.com Deals + Work Orders data</p>
+      </div>
     </div>
-    <div id="status">connecting…</div>
+    <div class="header-right">
+      <button id="new-chat-btn" type="button">New chat</button>
+      <div id="status"><span class="dot"></span><span id="status-text">connecting…</span></div>
+    </div>
   </header>
 
   <div id="chat"></div>
@@ -168,35 +236,47 @@
   const input = document.getElementById("input");
   const sendBtn = document.getElementById("send");
   const statusEl = document.getElementById("status");
+  const statusText = document.getElementById("status-text");
   const suggestionsEl = document.getElementById("suggestions");
+  const newChatBtn = document.getElementById("new-chat-btn");
+
+  marked.setOptions({ breaks: true, gfm: true });
 
   let sessionId = null;
+
+  function renderMarkdown(text) {
+    const rawHtml = marked.parse(text || "");
+    return DOMPurify.sanitize(rawHtml);
+  }
 
   function addMessage(role, text) {
     const msg = document.createElement("div");
     msg.className = "msg " + role;
+
+    const avatar = document.createElement("div");
+    avatar.className = "avatar";
+    avatar.textContent = role === "user" ? "You" : "S";
+
     const bubble = document.createElement("div");
     bubble.className = "bubble";
-    bubble.innerHTML = renderMarkdownLite(text);
+    if (role === "agent") {
+      bubble.innerHTML = renderMarkdown(text);
+    } else {
+      bubble.textContent = text;
+    }
+
+    msg.appendChild(avatar);
     msg.appendChild(bubble);
     chatEl.appendChild(msg);
     chatEl.scrollTop = chatEl.scrollHeight;
     return bubble;
   }
 
-  function renderMarkdownLite(text) {
-    // minimal, safe-ish markdown: bold, bullets, line breaks
-    const esc = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-    return esc
-      .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-      .replace(/^- (.+)$/gm, "• $1");
-  }
-
   function showTyping() {
     const msg = document.createElement("div");
     msg.className = "msg agent";
     msg.id = "typing-indicator";
-    msg.innerHTML = '<div class="bubble"><div class="typing"><span></span><span></span><span></span></div></div>';
+    msg.innerHTML = '<div class="avatar">S</div><div class="bubble"><div class="typing"><span></span><span></span><span></span></div></div>';
     chatEl.appendChild(msg);
     chatEl.scrollTop = chatEl.scrollHeight;
   }
@@ -204,24 +284,30 @@
     document.getElementById("typing-indicator")?.remove();
   }
 
+  async function startSession() {
+    const res = await fetch("/api/session", { method: "POST" });
+    const data = await res.json();
+    sessionId = data.sessionId;
+  }
+
   async function init() {
+    chatEl.innerHTML = "";
+    suggestionsEl.style.display = "flex";
     try {
-      const res = await fetch("/api/session", { method: "POST" });
-      const data = await res.json();
-      sessionId = data.sessionId;
+      await startSession();
 
       const health = await fetch("/api/health").then((r) => r.json());
       if (health.ok) {
-        statusEl.textContent = "connected to monday.com";
         statusEl.className = "ok";
+        statusText.textContent = "connected to monday.com";
         addMessage("agent", "Hi — I'm connected to your **" + health.boards.deals.name + "** and **" + health.boards.workOrders.name + "** boards. Ask me about pipeline, sectors, revenue, or execution status.");
       } else {
         throw new Error(health.error);
       }
     } catch (err) {
-      statusEl.textContent = "connection issue";
       statusEl.className = "err";
-      addMessage("agent", "I couldn't connect to monday.com: " + err.message + "\n\nCheck that MONDAY_API_TOKEN is set correctly and the boards exist.");
+      statusText.textContent = "connection issue";
+      addMessage("agent", "I couldn't connect to monday.com: " + err.message + "\n\nCheck that `MONDAY_API_TOKEN` is set correctly and the boards exist.");
     }
   }
 
@@ -260,6 +346,10 @@
   suggestionsEl.addEventListener("click", (e) => {
     const chip = e.target.closest(".chip");
     if (chip) sendMessage(chip.dataset.q);
+  });
+
+  newChatBtn.addEventListener("click", () => {
+    init();
   });
 
   init();
