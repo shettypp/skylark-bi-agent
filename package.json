@@ -1,0 +1,18 @@
+{
+  "name": "skylark-bi-agent",
+  "version": "1.0.0",
+  "description": "AI agent for founder-level business intelligence over monday.com Deals and Work Orders boards",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node server/index.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2"
+  },
+  "license": "MIT"
+}
