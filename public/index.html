@@ -142,10 +142,6 @@
 
   .msg { display: flex; gap: 12px; max-width: 94%; position: relative; }
   .msg.user { align-self: flex-end; flex-direction: row-reverse; max-width: 82%; }
-  .waypoint-col { display: flex; flex-direction: column; align-items: center; width: 18px; flex-shrink: 0; padding-top: 5px; }
-  .waypoint-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--bg); border: 2px solid var(--accent); flex-shrink: 0; z-index: 1; }
-  .msg.agent.thinking .waypoint-dot { animation: pulse 1s infinite; }
-  .waypoint-line { width: 1px; flex: 1; background: var(--border-soft); margin-top: 4px; }
 
   .bubble { padding: 14px 17px; border-radius: 10px; line-height: 1.6; font-size: 14.5px; min-width: 0; overflow-x: auto; }
   .msg.user .bubble { background: var(--accent); color: var(--accent-text); }
@@ -344,12 +340,6 @@
   function renderMessageEl(role, text) {
     const msg = document.createElement("div");
     msg.className = "msg " + role;
-    if (role === "agent") {
-      const col = document.createElement("div");
-      col.className = "waypoint-col";
-      col.innerHTML = '<div class="waypoint-dot"></div><div class="waypoint-line"></div>';
-      msg.appendChild(col);
-    }
     const bubble = document.createElement("div");
     bubble.className = "bubble";
     if (role === "agent") bubble.innerHTML = renderMarkdown(text);
@@ -477,10 +467,6 @@
     const msg = document.createElement("div");
     msg.className = "msg agent thinking";
     msg.id = "typing-indicator";
-    const col = document.createElement("div");
-    col.className = "waypoint-col";
-    col.innerHTML = '<div class="waypoint-dot"></div><div class="waypoint-line"></div>';
-    msg.appendChild(col);
     const bubble = document.createElement("div");
     bubble.className = "bubble";
     bubble.innerHTML = '<div class="progress-text"><span class="typing"><span></span><span></span><span></span></span><span id="progress-label">' + PROGRESS_PHRASES[0] + '</span></div>';
