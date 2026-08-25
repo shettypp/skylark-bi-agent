@@ -29,9 +29,10 @@
   }
   * { box-sizing: border-box; }
   ::selection { background: var(--accent-soft); color: var(--accent); }
+  html, body { height: 100%; overflow: hidden; }
   body {
     margin: 0; font-family: var(--sans); background: var(--bg); color: var(--text);
-    height: 100vh; display: flex; overflow: hidden; transition: background 0.2s, color 0.2s;
+    height: 100vh; height: 100dvh; display: flex; overflow: hidden; transition: background 0.2s, color 0.2s;
   }
 
   /* ---------- Sidebar ---------- */

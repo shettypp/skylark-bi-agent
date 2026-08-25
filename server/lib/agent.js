@@ -5,9 +5,34 @@
 // than depending on an SDK that may lag behind API changes.
 const { getDealsData, getWorkOrdersData, getSchema } = require("./dataService");
 
-// Free-tier Gemini model with solid tool-use support. Swap via env var if needed.
-const MODEL = process.env.GEMINI_MODEL || "gemini-3.6-flash";
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
+// Free-tier Gemini model with solid tool-use support. Testing revealed
+// "gemini-2.5-flash-lite" and "gemini-2.5-flash" 404 on this account's API
+// surface (Google's own error pointed us back to 3.6-flash) - so despite
+// its low 20 requests/day quota, 3.6-flash is the confirmed-working
+// primary. The untested models stay in the fallback list cheaply, in case
+// a different account/key (see GEMINI_API_KEY_2 etc.) has access to them.
+const PRIMARY_MODEL = process.env.GEMINI_MODEL || "gemini-3.6-flash";
+const FALLBACK_MODELS = ["gemini-2.5-flash-lite", "gemini-2.5-flash", "gemini-2.0-flash"];
+
+function geminiUrlFor(model) {
+  return `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+}
+
+// Supports multiple API keys (e.g. from separate Google accounts) as a
+// fallback chain, since free-tier quota is scoped per-account. Set
+// GEMINI_API_KEY as the primary, and optionally GEMINI_API_KEY_2,
+// GEMINI_API_KEY_3, etc. as backups - tried in order if one runs out.
+function getApiKeys() {
+  const keys = [];
+  if (process.env.GEMINI_API_KEY) keys.push(process.env.GEMINI_API_KEY);
+  let i = 2;
+  while (process.env[`GEMINI_API_KEY_${i}`]) {
+    keys.push(process.env[`GEMINI_API_KEY_${i}`]);
+    i++;
+  }
+  console.log(`[gemini] ${keys.length} API key(s) detected at startup`);
+  return keys;
+}
 
 const SYSTEM_PROMPT = `You are a founder-facing Business Intelligence agent for Skylark Drones,
 a company doing drone-based data services (Spectra, DMO, DronePass etc.) for enterprise
@@ -105,47 +130,77 @@ async function executeTool(name) {
 }
 
 async function callGemini(contents, retries = 2) {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new Error("GEMINI_API_KEY is not set in environment variables.");
+  const apiKeys = getApiKeys();
+  if (apiKeys.length === 0) throw new Error("GEMINI_API_KEY is not set in environment variables.");
 
-  for (let attempt = 0; attempt <= retries; attempt++) {
-    const res = await fetch(`${GEMINI_URL}?key=${apiKey}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents,
-        tools,
-        systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
-      }),
-    });
+  const modelsToTry = [PRIMARY_MODEL, ...FALLBACK_MODELS];
 
-    if (res.status === 429 || res.status >= 500) {
-      // Transient failure (rate limit or server error) - back off and retry.
-      if (attempt < retries) {
-        const waitMs = 1000 * Math.pow(2, attempt); // 1s, 2s
-        await new Promise((r) => setTimeout(r, waitMs));
-        continue;
+  for (let keyIdx = 0; keyIdx < apiKeys.length; keyIdx++) {
+    const apiKey = apiKeys[keyIdx];
+    const isLastKey = keyIdx === apiKeys.length - 1;
+
+    for (let modelIdx = 0; modelIdx < modelsToTry.length; modelIdx++) {
+      const model = modelsToTry[modelIdx];
+      const url = geminiUrlFor(model);
+      const isLastModel = modelIdx === modelsToTry.length - 1;
+      const isLastOption = isLastKey && isLastModel;
+
+      for (let attempt = 0; attempt <= retries; attempt++) {
+        console.log(`[gemini] trying key #${keyIdx + 1}/${apiKeys.length}, model "${model}", attempt ${attempt + 1}`);
+        const res = await fetch(`${url}?key=${apiKey}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents,
+            tools,
+            systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+          }),
+        });
+        console.log(`[gemini] key #${keyIdx + 1}, model "${model}" -> HTTP ${res.status}`);
+
+        // Model deprecated/not found - try the next model (same key first).
+        if (res.status === 404 && !isLastModel) break;
+
+        if (res.status === 429 || res.status >= 500) {
+          if (attempt < retries) {
+            await new Promise((r) => setTimeout(r, 1000 * Math.pow(2, attempt)));
+            continue;
+          }
+          // Out of retries on this model - try the next fallback model,
+          // and if that key's models are all exhausted, the next key.
+          if (!isLastModel) break;
+
+          if (isLastOption) {
+            if (res.status === 429) {
+              let detail = "";
+              try {
+                const body = await res.json();
+                detail = body?.error?.message || "";
+              } catch (e) {}
+              throw new Error(
+                "I'm being rate-limited across all available AI models and API keys right now " +
+                "(free-tier daily quota likely exhausted). Please try again later." +
+                (detail ? ` Details: ${detail}` : "")
+              );
+            }
+            throw new Error("The AI model service is temporarily unavailable. Please try again in a moment.");
+          }
+          break; // move to next model, or next key once models are exhausted
+        }
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          if (!isLastOption) break;
+          throw new Error(`Gemini API error (${res.status}): ${data?.error?.message || JSON.stringify(data)}`);
+        }
+
+        return data;
       }
-      if (res.status === 429) {
-        throw new Error(
-          "I'm being rate-limited by the AI model right now (free-tier limit is 15 requests/minute). Please wait about 30 seconds and try again."
-        );
-      }
-      throw new Error(
-        "The AI model service is temporarily unavailable. Please try again in a moment."
-      );
     }
-
-    const data = await res.json();
-
-    if (!res.ok) {
-      throw new Error(
-        `Gemini API error (${res.status}): ${data?.error?.message || JSON.stringify(data)}`
-      );
-    }
-
-    return data;
   }
+
+  throw new Error("All AI model options and API keys failed. Please try again shortly.");
 }
 
 /**
