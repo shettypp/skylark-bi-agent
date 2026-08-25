@@ -22,6 +22,31 @@ app.post("/api/session", (req, res) => {
   res.json({ sessionId });
 });
 
+// Rehydrates a session's memory from a client-cached transcript. Used when
+// resuming a past chat whose server-side memory may have been lost (e.g.
+// after a free-tier instance restart) - the browser keeps the real
+// transcript, so we just replay it into a fresh in-memory session without
+// re-calling the AI model for each past turn.
+app.post("/api/session/resume", (req, res) => {
+  try {
+    const { messages } = req.body;
+    if (!Array.isArray(messages)) {
+      return res.status(400).json({ error: "messages array is required" });
+    }
+    const sessionId = crypto.randomUUID();
+    const contents = messages
+      .filter((m) => m && typeof m.text === "string" && m.text.trim() && !m.system)
+      .map((m) => ({
+        role: m.role === "agent" ? "model" : "user",
+        parts: [{ text: m.text }],
+      }));
+    sessions.set(sessionId, contents);
+    res.json({ sessionId });
+  } catch (err) {
+    res.status(500).json({ error: "Could not resume session: " + err.message });
+  }
+});
+
 app.post("/api/chat", async (req, res) => {
   try {
     const { sessionId, message } = req.body;
